@@ -3,12 +3,31 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>DC Generator</title>
+  <title>DC Generator - Responsive</title>
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Rajdhani:wght@300;500;700&display=swap');
 
     body { margin: 0; overflow: hidden; background-color: #050505; font-family: 'Rajdhani', sans-serif; }
+    
+    /* --- Hamburger Menu Icon (Mobile Only) --- */
+    #menu-toggle {
+        position: absolute;
+        top: 20px;
+        right: 20px;
+        z-index: 2000;
+        background: rgba(0, 255, 204, 0.2);
+        border: 1px solid #00ffcc;
+        color: #00ffcc;
+        padding: 10px 15px;
+        border-radius: 8px;
+        cursor: pointer;
+        display: none; /* Desktop এ হাইড থাকবে */
+        font-family: 'Orbitron', sans-serif;
+        font-size: 16px;
+        backdrop-filter: blur(5px);
+    }
 
+    /* --- মাস্টার কন্ট্রোল প্যানেল --- */
     #master-panel {
         position: absolute;
         top: 20px;
@@ -23,6 +42,30 @@
         color: white;
         z-index: 1000;
         box-shadow: 0 0 30px rgba(0, 0, 0, 0.6);
+        transition: transform 0.4s ease, opacity 0.4s ease;
+    }
+
+    /* --- Mobile Responsive CSS --- */
+    @media (max-width: 768px) {
+        #menu-toggle {
+            display: block; /* মোবাইলে দেখাবে */
+        }
+        #master-panel {
+            top: 80px;
+            right: 15px;
+            width: calc(100% - 60px);
+            max-width: 300px;
+            transform: translateX(150%); /* শুরুতে স্ক্রিনের বাইরে থাকবে */
+            opacity: 0;
+            pointer-events: none;
+            max-height: 70vh;
+            overflow-y: auto; /* প্যানেল বড় হলে স্ক্রল করা যাবে */
+        }
+        #master-panel.active {
+            transform: translateX(0); /* ক্লিক করলে শো করবে */
+            opacity: 1;
+            pointer-events: auto;
+        }
     }
 
     .panel-title {
@@ -46,7 +89,6 @@
         color: #00ffcc;
         border: 1px solid #00ffcc;
     }
-
 
     .control-item { margin-bottom: 22px; }
     .control-item label { 
@@ -106,13 +148,15 @@
 </head>
 <body>
 
+  <button id="menu-toggle">☰ MENU</button>
+
   <div id="master-panel">
       <div class="panel-title">
           <span>Control Panel</span>
       </div>
 
       <div class="control-item">
-          <label>Armature Speed <span id="speed-val" class="val-text">0.02</span></label>
+          <label>Armature Speed <span id="speed-val" class="val-text">0.10</span></label>
           <input type="range" id="speed-slider" min="0" max="0.5" step="0.01" value="0.1">
       </div>
 
@@ -143,18 +187,35 @@
       <button id="pause-btn" class="btn-pause">Pause Simulation</button>
   </div>
 
-  <div id="watermark">DC GENERATOR | INTERACTIVE LABORATORY</div>
+  <div id="watermark">DC GENERATOR</div>
   
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
 
   <script>
+    // --- UI Responsive Logic ---
+    const menuToggle = document.getElementById('menu-toggle');
+    const masterPanel = document.getElementById('master-panel');
+
+    menuToggle.addEventListener('click', () => {
+        masterPanel.classList.toggle('active');
+        // আইকন পরিবর্তন (☰ থেকে ✕)
+        if (masterPanel.classList.contains('active')) {
+            menuToggle.innerText = '✕ CLOSE';
+        } else {
+            menuToggle.innerText = '☰ MENU';
+        }
+    });
+
     // --- SCENE SETUP (Original) ---
     const scene = new THREE.Scene();
     scene.background = new THREE.Color(0x87CEEB);
 
-    const camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.1, 1000);
-    camera.position.set(15, 12, 20);
+    // ক্যামেরা সেটআপ 
+    const isMobile = window.innerWidth < 768;
+    const camera = new THREE.PerspectiveCamera(isMobile ? 85 : 70, window.innerWidth / window.innerHeight, 0.1, 1000);
+    if (isMobile) { camera.position.set(20, 15, 30); 
+    } else {camera.position.set(15, 12, 20);}
 
     const renderer = new THREE.WebGLRenderer({ antialias: true });
     renderer.setSize(window.innerWidth, window.innerHeight);
@@ -163,15 +224,16 @@
 
     const controls = new THREE.OrbitControls(camera, renderer.domElement);
     controls.enableDamping = true;
+    controls.target.set(0, 0, 0);
 
     scene.add(new THREE.AmbientLight(0xffffff, 0.5));
     const pointLight = new THREE.PointLight(0xffffff, 2);
     pointLight.position.set(10, 20, 10);
     scene.add(pointLight);
 
-    // --- GUI SETTINGS (Original + New Features) ---
+    // --- GUI SETTINGS ---
     const guiSettings = {
-      rotationSpeed: 0.02,
+      rotationSpeed: 0.1,
       showFluxLines: true,
       showShaftAndWheel: true,
       showArmature: true,
@@ -180,85 +242,56 @@
       isPaused: false
     };
 
-    // --- HELPER FUNCTIONS (Original) ---
-    function createLabelTexture(text, bgColor) {
+  function createLabelPlane(text, bgColor, width = 2, height = 2) {
       const canvas = document.createElement('canvas');
-      canvas.width = 512; canvas.height = 512;
+      canvas.width = 400;
+      canvas.height = 400;
       const ctx = canvas.getContext('2d');
       ctx.fillStyle = bgColor;
-      ctx.fillRect(0, 0, 512, 512);
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
       ctx.font = 'Bold 300px Arial';
       ctx.fillStyle = 'white';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
-      ctx.fillText(text, 256, 256);
-      return new THREE.CanvasTexture(canvas);
-    }
+      ctx.fillText(text, canvas.width/2, canvas.height/2);
+      const tex = new THREE.CanvasTexture(canvas);
+      tex.needsUpdate = true;
+      const planeGeo = new THREE.PlaneGeometry(width, height);
+      const planeMat = new THREE.MeshStandardMaterial({ map: tex, transparent: true, side: THREE.DoubleSide });
+      return new THREE.Mesh(planeGeo, planeMat);
+  }
 
-    class PolylineCurve extends THREE.Curve {
-      constructor(points = []) {
-        super();
-        this.points = points;
-        this.lengths = [];
-        this.totalLength = 0;
-        for (let i = 0; i < points.length - 1; i++) {
-          const len = points[i].distanceTo(points[i + 1]);
-          this.lengths.push(len);
-          this.totalLength += len;
-        }
-      }
-      getPoint(t) {
-        let d = t * this.totalLength;
-        for (let i = 0; i < this.lengths.length; i++) {
-          if (d <= this.lengths[i]) {
-            const localT = d / this.lengths[i];
-            return new THREE.Vector3().lerpVectors(this.points[i], this.points[i + 1], localT);
-          }
-          d -= this.lengths[i];
-        }
-        return this.points[this.points.length - 1];
-      }
-    }
-
-    // --- MAGNETS (Original) ---
-    const innerRadius = 2.5, magnetHeight = 4, magnetWidth = 2, magnetDepth = 8;
-    function createMagnetShape() {
-        const s = new THREE.Shape();
-        s.moveTo(innerRadius, -magnetHeight / 2);
-        s.lineTo(innerRadius + magnetWidth, -magnetHeight / 2);
-        s.lineTo(innerRadius + magnetWidth, magnetHeight / 2);
-        s.lineTo(innerRadius, magnetHeight / 2);
-        const startAngle = Math.asin((magnetHeight / 2) / innerRadius);
-        s.absarc(0, 0, innerRadius, startAngle, -startAngle, true);
-        return s;
-    }
-    const mGeo = new THREE.ExtrudeGeometry(createMagnetShape(), { depth: magnetDepth, bevelEnabled: false, curveSegments: 64 });
-    const texN = createLabelTexture('N', '#ee3311');
-    const mN = new THREE.Mesh(mGeo, [
-      new THREE.MeshStandardMaterial({ color: 0xee3311 }),
-      new THREE.MeshStandardMaterial({ map: texN }),
-      new THREE.MeshStandardMaterial({ map: texN })
-    ]);
+  const innerRadius = 2.5, magnetHeight = 4, magnetWidth = 2, magnetLength = 8;
+  function createMagnetShape() {
+    const s = new THREE.Shape();
+    s.moveTo(innerRadius, -magnetHeight / 2); 
+    s.lineTo(innerRadius + magnetWidth, -magnetHeight / 2); 
+    s.lineTo(innerRadius + magnetWidth, magnetHeight / 2); 
+    s.lineTo(innerRadius, magnetHeight / 2); 
+    const startAngle = Math.asin((magnetHeight / 2) / innerRadius);
+    s.absarc(0, 0, innerRadius, startAngle, -startAngle, true); 
+    return s;
+  }
+    
+    const mGeo = new THREE.ExtrudeGeometry(createMagnetShape(), { depth: magnetLength, bevelEnabled: false, curveSegments: 64 });
+    const mN = new THREE.Mesh(mGeo, new THREE.MeshStandardMaterial({ color: 0xee3311 }));
     mN.rotation.y = Math.PI; mN.position.set(0, 0, 2); scene.add(mN);
 
-    const texS = createLabelTexture('S', '#1133ee');
-    const mS = new THREE.Mesh(mGeo, [
-      new THREE.MeshStandardMaterial({ color: 0x1133ee }),
-      new THREE.MeshStandardMaterial({ map: texS }),
-      new THREE.MeshStandardMaterial({ map: texS })
-    ]);
+    const mS = new THREE.Mesh(mGeo, new THREE.MeshStandardMaterial({ color: 0x1133ee }));
     mS.position.set(0, 0, -6); scene.add(mS);
 
-    // --- ARMATURE GROUP (Original) ---
-    const armatureGroup = new THREE.Group();
-    scene.add(armatureGroup);
+    const nPlane = createLabelPlane('N', '#ee3311', 1.5, 1.5);
+    nPlane.position.set(-3.5, 0, 2.01); scene.add(nPlane);
 
-    const shaft = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.12, 0.12, 12, 16),
-      new THREE.MeshStandardMaterial({ color: 0x888888 })
-    );
+    const sPlane = createLabelPlane('S', '#1133ee', 1.5, 1.5);
+    sPlane.position.set(3.5, 0, 2.01); scene.add(sPlane);
+
+    const rotatingGroup = new THREE.Group();
+    scene.add(rotatingGroup);
+
+    const shaft = new THREE.Mesh( new THREE.CylinderGeometry(0.12, 0.12, 12, 16), new THREE.MeshStandardMaterial({ color: 0x888888 }));
     shaft.rotation.x = Math.PI / 2;
-    armatureGroup.add(shaft);
+    rotatingGroup.add(shaft);
 
     const innerR = 0.5, outerR = 0.6, rHeight = 0.8, slit = 0.15;
     function createSegment(start, end) {
@@ -271,21 +304,43 @@
     const seg1 = new THREE.Mesh(createSegment(-Math.PI/2 + slit, Math.PI/2 - slit), commMat);
     const seg2 = new THREE.Mesh(createSegment(Math.PI/2 + slit, 3*Math.PI/2 - slit), commMat);
     seg1.position.z = 2.5; seg2.position.z = 2.5;
-    armatureGroup.add(seg1, seg2);
+    rotatingGroup.add(seg1, seg2);
 
     const slipRingCylinder = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, 0.8, 16), new THREE.MeshStandardMaterial({ color: 0x888888}));
     slipRingCylinder.rotation.x = Math.PI/2; slipRingCylinder.position.set(0, 0, 2.9);
-    armatureGroup.add(slipRingCylinder);
+    rotatingGroup.add(slipRingCylinder);
+
+    function createSmoothPath(points, jointRadius = 0.2) {      
+        const path = new THREE.CurvePath();
+        for (let i = 0; i < points.length - 1; i++) {
+            const p1 = points[i];
+            const p2 = points[i + 1];
+            const dir = new THREE.Vector3().subVectors(p2, p1).normalize();
+            const segmentLen = p1.distanceTo(p2);
+            const offset = Math.min(jointRadius, segmentLen / 2.1);
+            const start = p1.clone().add(dir.clone().multiplyScalar(i === 0 ? 0 : offset));
+            const end = p2.clone().sub(dir.clone().multiplyScalar(i === points.length - 2 ? 0 : offset));
+            path.add(new THREE.LineCurve3(start, end));
+            if (i < points.length - 2) {
+                const nextP = points[i + 2];
+                const nextDir = new THREE.Vector3().subVectors(nextP, p2).normalize();
+                const nextStart = p2.clone().add(nextDir.clone().multiplyScalar(offset));
+                path.add(new THREE.QuadraticBezierCurve3(end, p2, nextStart));
+            }
+        }
+        return path;
+    }
 
     const points = [
       new THREE.Vector3(0.48, 0, 3), new THREE.Vector3(0.4, 0, 2), new THREE.Vector3(1.5, 0, 2.0),
       new THREE.Vector3(1.5, 0, -5.5), new THREE.Vector3(-1.5, 0, -5.5),
       new THREE.Vector3(-1.5, 0, 2.0), new THREE.Vector3(-0.4, 0, 2.0), new THREE.Vector3(-0.48, 0, 3)
     ];
-    const loopCurve = new PolylineCurve(points);
-    const loopMesh = new THREE.Mesh(new THREE.TubeGeometry(loopCurve, 100, 0.08, 8, false), 
+    const loopPath = createSmoothPath(points, 0.5);
+
+    const loopMesh = new THREE.Mesh(new THREE.TubeGeometry(loopPath, 160, 0.08, 8, false), 
     new THREE.MeshStandardMaterial({color: 0xffa520, metalness: 0.5, roughness: 0.2, transparent: true, opacity: 0.3 }));
-    armatureGroup.add(loopMesh);
+    rotatingGroup.add(loopMesh);
 
     const wheelGroup = new THREE.Group();
     const wheelGeo = new THREE.TorusGeometry(1.2, 0.15, 16, 50);
@@ -296,19 +351,19 @@
     handleBar.position.set(1.1, 0, 0.4); handleBar.rotation.x = Math.PI / 2; wheelGroup.add(handleBar);
     const handleGrip = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 0.5, 12), new THREE.MeshStandardMaterial({ color: 0xcc0000 }));
     handleGrip.position.set(1.1, 0, 0.8); handleGrip.rotation.x = Math.PI / 2; wheelGroup.add(handleGrip);
-    wheelGroup.position.z = 6; armatureGroup.add(wheelGroup);
+    wheelGroup.position.z = 6; rotatingGroup.add(wheelGroup);
 
-    // --- STATIC ELEMENTS (Original) ---
     const staticGroup = new THREE.Group(); scene.add(staticGroup);
     const brushMat = new THREE.MeshStandardMaterial({ color: 0x222222 });
     const b1 = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.4, 0.5), brushMat); b1.position.set(0.62, 0, 2.9);
     const b2 = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.4, 0.5), brushMat); b2.position.set(-0.62, 0, 2.9);
     staticGroup.add(b1, b2);
 
-    const wPath1 = [new THREE.Vector3(0.62, 0, 2.9), new THREE.Vector3(4, 0, 2.9), new THREE.Vector3(4, -1, 2.9), new THREE.Vector3(-4, -1, 2.9), new THREE.Vector3(-4, -1, 5), new THREE.Vector3(-4, 0, 5)];
-    const wPath2 = [new THREE.Vector3(-0.62, 0, 2.9), new THREE.Vector3(-4, 0, 2.9), new THREE.Vector3(-4, 0, 5)];
-    staticGroup.add(new THREE.Mesh(new THREE.TubeGeometry(new PolylineCurve(wPath1), 40, 0.05, 8), brushMat));
-    staticGroup.add(new THREE.Mesh(new THREE.TubeGeometry(new PolylineCurve(wPath2), 40, 0.05, 8), brushMat));
+    const wire1Pts = [new THREE.Vector3(0.62, 0, 2.9), new THREE.Vector3(4, 0, 2.9), new THREE.Vector3(4, -1, 2.9), new THREE.Vector3(-4, -1, 2.9), new THREE.Vector3(-4, -1, 5), new THREE.Vector3(-4, 0, 5)];
+    const wire2Pts = [new THREE.Vector3(-0.62, 0, 2.9), new THREE.Vector3(-4, 0, 2.9), new THREE.Vector3(-4, 0, 5)];
+
+    staticGroup.add(new THREE.Mesh(new THREE.TubeGeometry(createSmoothPath(wire1Pts, 0.4), 80, 0.05, 8), brushMat));
+    staticGroup.add(new THREE.Mesh(new THREE.TubeGeometry(createSmoothPath(wire2Pts, 0.4), 80, 0.05, 8), brushMat));
 
     const bulbRoot = new THREE.Group(); bulbRoot.position.set(-4, 1, 5); staticGroup.add(bulbRoot);
     const glass = new THREE.Mesh(new THREE.SphereGeometry(0.8, 20, 20), new THREE.MeshStandardMaterial({ color: 0xffffff, transparent: true, opacity: 0.3 }));
@@ -322,7 +377,7 @@
     for (let i = 0; i < 25; i++) {
       const eMesh = new THREE.Mesh(new THREE.SphereGeometry(0.1, 12, 12), new THREE.MeshStandardMaterial({ color: 0xffff00, emissive: 0xffff00 }));
       electrons.push({ mesh: eMesh, offset: i / 25 });
-      armatureGroup.add(eMesh);
+      rotatingGroup.add(eMesh);
     }
 
     const fluxGroup = new THREE.Group();
@@ -334,7 +389,7 @@
     }
     scene.add(fluxGroup);
 
-    // --- MASTER CONTROLS UI LOGIC ---
+    // --- LOGIC ---
     const speedSlider = document.getElementById('speed-slider');
     const opacitySlider = document.getElementById('opacity-slider');
     const fluxToggle = document.getElementById('flux-toggle');
@@ -343,33 +398,27 @@
     const armatureToggle = document.getElementById('armature-toggle');
     const pauseBtn = document.getElementById('pause-btn');
 
-    const speedValText = document.getElementById('speed-val');
-    const opacityValText = document.getElementById('opacity-val');
-
     speedSlider.addEventListener('input', (e) => {
         guiSettings.rotationSpeed = parseFloat(e.target.value);
-        speedValText.innerText = guiSettings.rotationSpeed.toFixed(3);
+        document.getElementById('speed-val').innerText = guiSettings.rotationSpeed.toFixed(2);
     });
 
     opacitySlider.addEventListener('input', (e) => {
         guiSettings.armatureOpacity = parseFloat(e.target.value);
         loopMesh.material.opacity = guiSettings.armatureOpacity;
-        opacityValText.innerText = guiSettings.armatureOpacity.toFixed(2);
+        document.getElementById('opacity-val').innerText = guiSettings.armatureOpacity.toFixed(2);
     });
 
     fluxToggle.addEventListener('change', (e) => fluxGroup.visible = e.target.checked);
-    
     electronToggle.addEventListener('change', (e) => {
         guiSettings.showElectrons = e.target.checked;
         electrons.forEach(eObj => eObj.mesh.visible = guiSettings.showElectrons);
     });
-
     shaftToggle.addEventListener('change', (e) => {
         shaft.visible = e.target.checked;
         wheelGroup.visible = e.target.checked;
         slipRingCylinder.visible = e.target.checked;
     });
-
     armatureToggle.addEventListener('change', (e) => loopMesh.visible = e.target.checked);
 
     pauseBtn.addEventListener('click', () => {
@@ -378,42 +427,41 @@
         pauseBtn.classList.toggle('active');
     });
 
-    // --- ANIMATION ---
     let rotation = 0, progress = 0;
     function animate() {
       requestAnimationFrame(animate);
-      
       if (!guiSettings.isPaused) {
         rotation -= guiSettings.rotationSpeed;
-        armatureGroup.rotation.z = rotation;
-
+        rotatingGroup.rotation.z = rotation;
         let intensity = Math.abs(Math.sin(rotation));
         let velocityFactor = Math.sin(rotation);
         progress += 0.005 * velocityFactor;
-
         electrons.forEach(e => {
           let eProgress = (progress + e.offset) % 1;
           if (eProgress < 0) eProgress += 1;
-          e.mesh.position.copy(loopCurve.getPoint(eProgress));
+          e.mesh.position.copy(loopPath.getPoint(eProgress));
           e.mesh.material.opacity = (Math.abs(velocityFactor) + 0.3) * (guiSettings.showElectrons ? 1 : 0);
           e.mesh.material.transparent = true;
         });
-
         filamentMat.color.setHSL(0.1, 1, 0.2 + intensity * 0.8);
         bLight.intensity = intensity * 3;
         glass.material.opacity = 0.2 + intensity * 0.4;
       }
-
       controls.update();
       renderer.render(scene, camera);
     }
     animate();
 
-    window.addEventListener('resize', () => {
-      camera.aspect = window.innerWidth / window.innerHeight;
+
+  window.addEventListener('resize', () => {
+      const width = window.innerWidth;
+      const height = window.innerHeight;
+      camera.aspect = width / height;
+      if (width < 768) { camera.fov = 90;} else { camera.fov = 70;}
       camera.updateProjectionMatrix();
-      renderer.setSize(window.innerWidth, window.innerHeight);
-    });
+      renderer.setSize(width, height);
+  });
+
   </script>
 </body>
 </html>
