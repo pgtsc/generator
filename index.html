@@ -3,20 +3,33 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>DC Generator - Responsive</title>
+  <title>JCR Generator</title>
 
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Rajdhani:wght@300;500;700&display=swap');
+    canvas {
+        display: block;
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100vw !important;
+        height: 100vh !important;
+        z-index: 1;
+    }
 
-    body { 
-        margin: 0; 
+    body {
+        margin: 0;
         padding: 0;
+        display: flex;
+        justify-content: center;
+        align-items: center;
         overflow: hidden; 
         background-color: #050505; 
         font-family: 'Rajdhani', sans-serif;
         height: 100vh;
         width: 100vw;
-    }
+      }
+
 
     /* --- Mobile Topbar (Visible only on Mobile) --- */
     #mobile-topbar {
@@ -217,7 +230,6 @@ const menuToggle = document.getElementById('menu-toggle');
 
     menuToggle.addEventListener('click', () => {
         masterPanel.classList.toggle('active');
-        // আইকন পরিবর্তন লজিক
         if (masterPanel.classList.contains('active')) {
             menuToggle.innerText = '✕';
         } else {
@@ -225,7 +237,7 @@ const menuToggle = document.getElementById('menu-toggle');
         }
     });
 
-    // --- SCENE SETUP (Original) ---
+    // --- SCENE SETUP ---
     const scene = new THREE.Scene();
     scene.background = new THREE.Color(0x87CEEB);
 
@@ -470,8 +482,6 @@ const menuToggle = document.getElementById('menu-toggle');
     }
     animate();
 
-
-    
     window.addEventListener('resize', () => {
       const width = window.innerWidth;
       const height = window.innerHeight;
@@ -481,7 +491,7 @@ const menuToggle = document.getElementById('menu-toggle');
       
       if (isMobileNow) { 
           camera.fov = 90;
-          camera.position.set(0, 15, 40); // মোবাইলে সেন্টারিং
+          camera.position.set(0, 15, 40); 
           controls.target.set(0, 0, 0);
       } else { 
           camera.fov = 70;
