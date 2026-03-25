@@ -214,7 +214,7 @@
     // ক্যামেরা সেটআপ 
     const isMobile = window.innerWidth < 768;
     const camera = new THREE.PerspectiveCamera(isMobile ? 85 : 70, window.innerWidth / window.innerHeight, 0.1, 1000);
-    if (isMobile) { camera.position.set(20, 15, 30); 
+    if (isMobile) { camera.position.set(0, 15, 30); 
     } else {camera.position.set(15, 12, 20);}
 
     const renderer = new THREE.WebGLRenderer({ antialias: true });
